@@ -150,7 +150,6 @@ cython_debug/
 *.bin
 /screenshots/
 
-*.d.ts
-*.js
+
 node_modules
 /tests/.env
