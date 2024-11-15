@@ -65,7 +65,7 @@ class ITarsier(Protocol):
 class Tarsier(ITarsier):
     _JS_TAG_UTILS = Path(__file__).parent / "tag_utils.min.js"
 
-    def __init__(self, ocr_service: OCRService):
+    def __init__(self, ocr_service: Optional[OCRService] = None):
         self._ocr_service = ocr_service
         self._js_utils = load_js(self._JS_TAG_UTILS)
 
@@ -196,6 +196,10 @@ class Tarsier(ITarsier):
         return coloured_image
 
     def _run_ocr(self, image: bytes) -> str:
+        if not self._ocr_service:
+            raise ValueError(
+                "OCR service is not configured. This function requires OCR."
+            )
         ocr_text = self._ocr_service.annotate(image)
         page_text = format_text(ocr_text)
         return page_text
