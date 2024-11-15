@@ -40,7 +40,7 @@ jobs:
       - name: Run mypy check
         run: poetry run mypy .
 
-  # Compile TypeScript
+  # Compile TypeScript and commit the result
   compile-js:
     runs-on: ubuntu-latest
     steps:
@@ -52,3 +52,14 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Compile TypeScript
         run: npm ci && npm run lint && npm run build
+      - name: Move Compiled Files
+        run: |
+          mv dist/tag_utils.js tarsier/tag_utils.js
+          mv dist/tag_utils.min.js tarsier/tag_utils.min.js
+      - name: Commit and Push Compiled Files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tarsier/tag_utils.js tarsier/tag_utils.min.js
+          git commit -m "Add compiled tag_utils.js and tag_utils.min.js [skip ci]" || echo "No changes to commit"
+          git push origin HEAD
