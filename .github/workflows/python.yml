@@ -1,4 +1,4 @@
-name: Test and Publish
+name: Build and Lint
 on:
   push:
     branches: ["main"]
@@ -10,26 +10,7 @@ env:
   NODE_VERSION: "20.x"
 
 jobs:
-  check-version:
-    runs-on: ubuntu-latest
-    outputs:
-      should_publish: ${{ steps.pre-val.outputs.should_publish }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check if current version is published
-        id: pre-val
-        run: |
-          LOCAL_VERSION=$(grep '^version =' pyproject.toml | head -1 | awk -F '"' '{print $2}')
-          REMOTE_VERSION=$(curl -s https://pypi.org/pypi/tarsier/json | jq -r .info.version)
-
-          echo "Local version: $LOCAL_VERSION"
-          echo "Remote version: $REMOTE_VERSION"
-
-          if [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]; then
-              echo "Version $LOCAL_VERSION is not published yet"
-              echo "::set-output name=should_publish::true"
-          fi
-
+  # Linting with ruff
   ruff:
     runs-on: ubuntu-latest
     steps:
@@ -44,6 +25,7 @@ jobs:
       - name: Run ruff check
         run: poetry run ruff format --check .
 
+  # Type checking with mypy
   mypy:
     runs-on: ubuntu-latest
     steps:
@@ -58,7 +40,8 @@ jobs:
       - name: Run mypy check
         run: poetry run mypy .
 
-  pytest:
+  # Compile TypeScript
+  compile-js:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,40 +52,3 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Compile TypeScript
         run: npm ci && npm run lint && npm run build
-      - name: Install poetry
-        run: pipx install poetry
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "poetry"
-      - run: poetry install && poetry run playwright install chromium
-      - name: Run pytest check
-        run: poetry run pytest -vv --cov="tarsier" .
-        env:
-          TARSIER_GOOGLE_OCR_CREDENTIALS: ${{ secrets.TARSIER_GOOGLE_OCR_CREDENTIALS }}
-          TARSIER_MICROSOFT_OCR_CREDENTIALS: ${{ secrets.TARSIER_MICROSOFT_OCR_CREDENTIALS }}
-
-  publish:
-    needs: [check-version, ruff, mypy, pytest]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && needs.check-version.outputs.should_publish == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-          cache-dependency-path: package-lock.json
-      - name: Compile TypeScript
-        run: npm ci && npm run build
-      - name: Install poetry
-        run: pipx install poetry
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "poetry"
-      - run: poetry install
-      - name: Build and Publish
-        run: |
-          poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
-          poetry publish --build
