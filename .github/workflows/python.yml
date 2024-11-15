@@ -52,10 +52,6 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Compile TypeScript
         run: npm ci && npm run lint && npm run build
-      - name: Move Compiled Files
-        run: |
-          mv dist/tag_utils.js tarsier/tag_utils.js
-          mv dist/tag_utils.min.js tarsier/tag_utils.min.js
       - name: Commit and Push Compiled Files
         run: |
           git config user.name "github-actions[bot]"
